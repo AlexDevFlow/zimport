@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "zimport-wiki"
+version = "0.1.0"
+description = "Convert a Zim Desktop Wiki notebook into an Obsidian vault"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+authors = [{ name = "AlexDevFlow" }]
+keywords = ["zim", "obsidian", "wiki", "markdown", "converter", "notes"]
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "Programming Language :: Python :: 3",
+    "Topic :: Text Processing :: Markup",
+]
+
+[project.urls]
+Homepage = "https://github.com/AlexDevFlow/zimport"
+Repository = "https://github.com/AlexDevFlow/zimport"
+
+[project.scripts]
+zimport = "zimport.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["zimport"]

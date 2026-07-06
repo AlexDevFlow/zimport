@@ -1,0 +1,14 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.6
+Creation-Date: 2024-03-02T09:00:00+01:00
+
+====== Projects ======
+Back to [[Home]].
+
+Child pages:
+* [[+Foo]]
+
+A numbered plan:
+1. draft
+2. review
+3. ship

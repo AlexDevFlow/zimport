@@ -1,0 +1,38 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.6
+Creation-Date: 2024-03-01T10:00:00+01:00
+
+====== Home ======
+Welcome to the **test** notebook. Some //emphasis//, some __highlight__, some
+~~struck out~~ text and a bit of ''inline code''.
+
+This links to [[Projects]] and to a deep page [[Projects:Foo:Bar]]. A named
+link: [[Projects:Foo|the Foo page]]. An outside link: [[https://obsidian.md|Obsidian]].
+A page whose name has a space: [[Meeting Notes]].
+
+===== A list =====
+* first
+* second
+	* nested under second
+	* another nested
+* third
+
+===== Things to do =====
+[ ] buy milk
+[*] write the converter @done
+[x] cancelled idea
+[>] moved to next week
+
+===== Notes =====
+Water is H_{2}O and 2^{10} is 1024.
+
+Tags: @project @writing
+
+--------------------
+
+Some code:
+
+'''
+def hello():
+    print("hi")
+'''

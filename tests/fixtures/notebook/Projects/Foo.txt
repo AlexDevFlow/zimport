@@ -1,0 +1,17 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.6
+Creation-Date: 2024-03-03T14:30:00+01:00
+
+====== Foo ======
+Part of [[:Projects]]. A sibling relative link works too: [[Bar]].
+
+Here is an attached diagram:
+
+{{./diagram.png?width=320}}
+
+A code object:
+
+{{{code: lang="python" linenumbers="True"
+for i in range(3):
+    print(i)
+}}}

@@ -1,0 +1,6 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.6
+Creation-Date: 2024-03-05T16:00:00+01:00
+
+====== Meeting Notes ======
+Discussed [[Projects]]. See also [[Projects:Foo:Bar]].

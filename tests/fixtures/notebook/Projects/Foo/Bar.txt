@@ -1,0 +1,7 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.6
+Creation-Date: 2024-03-04T08:00:00+01:00
+
+====== Bar ======
+This is a leaf page under Foo. It links back up to [[Foo]] and over to
+[[:Home]].
