@@ -99,5 +99,51 @@ class HiddenFiles(unittest.TestCase):
         self.assertIn("1 page(s)", r.stdout)
 
 
+class PageDetection(unittest.TestCase):
+    """Zim only counts a .txt as a page if it carries Zim's own header."""
+
+    def convert(self, files):
+        tmp = TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        nb = Path(tmp.name) / "notebook"
+        nb.mkdir()
+        (nb / "notebook.zim").write_text("[Notebook]\nname=t\n", encoding="utf-8")
+        for name, text in files.items():
+            f = nb / name
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_text(text, encoding="utf-8")
+        out = Path(tmp.name) / "vault"
+        r = subprocess.run(
+            [sys.executable, "-m", "zimport", str(nb), str(out)],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return out, r
+
+    def test_text_attachment_is_copied_not_converted(self):
+        out, _ = self.convert({
+            "Page.txt": "Content-Type: text/x-zim-wiki\n\n====== Page ======\nhi\n",
+            "Page/notes.txt": "just a text file **someone attached**\n",
+        })
+        self.assertTrue((out / "Page.md").exists())
+        self.assertTrue((out / "Page" / "notes.txt").exists())
+        self.assertFalse((out / "Page" / "notes.md").exists())
+        self.assertIn(
+            "**someone attached**",
+            (out / "Page" / "notes.txt").read_text(encoding="utf-8"),
+        )
+
+    def test_name_with_a_space_is_not_a_page(self):
+        out, _ = self.convert({
+            "Page.txt": "Content-Type: text/x-zim-wiki\n\n====== Page ======\nhi\n",
+            "My File.txt": "Content-Type: text/x-zim-wiki\n\n====== My File ======\n",
+        })
+        self.assertTrue((out / "Page.md").exists())
+        self.assertFalse((out / "My File.md").exists())
+        self.assertTrue((out / "My File.txt").exists())
+
+
 if __name__ == "__main__":
     unittest.main()

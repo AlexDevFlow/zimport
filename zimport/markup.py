@@ -181,8 +181,13 @@ class Converter:
 
         resolved, exists = self.nb.resolve(parts, target)
         if not exists:
+            # No page behind it. Write the full path so the dead link stays
+            # where Zim would have put the page, instead of shortening to a
+            # bare name that Obsidian would attach to some unrelated note.
             stats.unresolved.append(href)
-        link = self.nb.wikilink_target(resolved)
+            link = "/".join(self.nb.vault_parts(resolved))
+        else:
+            link = self.nb.wikilink_target(resolved)
         if anchor:
             link += "#" + anchor
         leaf = decode_name(resolved[-1], self.nb.keep_underscores)

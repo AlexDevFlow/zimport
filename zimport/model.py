@@ -16,6 +16,27 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 
+ZIM_HEADER = "Content-Type: text/x-zim-wiki"
+
+
+def is_page_file(path: Path) -> bool:
+    """Whether Zim would treat this .txt file as a page.
+
+    Zim wants its own header on the first line, and it stores a page name by
+    writing spaces as underscores, so a name that still has a space in it
+    never came from Zim. Everything else in the tree is just a file sitting
+    next to a page -- a text attachment, most often -- and gets copied across
+    rather than converted.
+    """
+    if " " in path.name:
+        return False
+    try:
+        with path.open("r", encoding="utf-8-sig", errors="replace") as fh:
+            return fh.readline(60).strip() == ZIM_HEADER
+    except OSError:
+        return False
+
+
 def decode_name(part: str, keep_underscores: bool = False) -> str:
     """On-disk name segment to display name. Zim writes spaces as underscores."""
     if keep_underscores:
@@ -51,7 +72,7 @@ class Notebook:
             if any(p.startswith(".") for p in rel.parts):
                 continue
             parts = rel.with_suffix("").parts
-            if not parts:
+            if not parts or not is_page_file(txt):
                 continue
             nb.pages[parts] = Page(parts=parts, source=txt)
         for parts in nb.pages:
@@ -99,19 +120,47 @@ class Notebook:
         comps = tuple(_split(href))
         if not comps:
             return current, True
+        return self._resolve_floating(tuple(current), comps)
 
-        # Zim resolves a plain link by walking up: try it under the current
-        # page, then each ancestor namespace, then the root.
-        base = tuple(current)
-        while True:
-            hit = self._find(base + comps)
-            if hit is not None:
-                return hit, True
-            if not base:
-                break
-            base = base[:-1]
-        # nothing matched: Zim would create it next to the current page
-        return tuple(current[:-1]) + comps, False
+    def _resolve_floating(
+        self, current: tuple[str, ...], comps: tuple[str, ...]
+    ) -> tuple[tuple[str, ...], bool]:
+        """Resolve a link written as a plain name, the way Zim does.
+
+        Zim matches the link's *first* name against the pages it knows, then
+        hangs the rest of the link off whatever that matched. A candidate has
+        to sit at or above the linking page's own depth -- a plain name never
+        reaches down into a child, which is what ``[[+child]]`` is for -- and
+        it has to share an ancestor with the linking page. Of those, the
+        deepest wins, so a sibling beats a page of the same name at the root.
+        """
+        anchor = _normalize((comps[0],))[0]
+        here = _normalize(current)
+        maxdepth = len(current) - 1
+
+        best: list[tuple[str, ...]] = []
+        best_depth = -1
+        for parts in self.pages:
+            if _normalize((parts[-1],))[0] != anchor:
+                continue
+            depth = len(parts) - 1
+            if depth > maxdepth or depth < best_depth:
+                continue
+            if depth > 0 and here[: depth] != _normalize(parts[:-1]):
+                continue  # not on the linking page's own branch
+            if depth > best_depth:
+                best, best_depth = [parts], depth
+            else:
+                best.append(parts)
+
+        if best:
+            # Zim prefers a candidate whose name matches letter for letter.
+            exact = [p for p in best if p[-1] == comps[0]]
+            pick = (exact or sorted(best, reverse=True))[0]
+            return self._lookup(pick + comps[1:], pick + comps[1:])
+
+        # Nothing matched, so Zim puts the page next to the linking one.
+        return current[:-1] + comps, False
 
     def _find(self, parts: tuple[str, ...]) -> tuple[str, ...] | None:
         """Look parts up ignoring underscore/space and case; return real parts."""

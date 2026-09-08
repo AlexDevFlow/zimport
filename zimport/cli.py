@@ -115,8 +115,9 @@ def attachment_files(nb: Notebook) -> dict[str, Path]:
     both copy the files and tell which embeds have nothing behind them.
     """
     out: dict[str, Path] = {}
+    sources = {p.source for p in nb.pages.values()}
     for f in sorted(nb.root.rglob("*")):
-        if f.is_dir() or f.suffix == ".txt" or f.name == "notebook.zim":
+        if f.is_dir() or f in sources or f.name == "notebook.zim":
             continue
         rel = f.relative_to(nb.root)
         if any(part.startswith(".") for part in rel.parts):

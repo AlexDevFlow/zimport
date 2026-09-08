@@ -128,6 +128,28 @@ class Links(unittest.TestCase):
         md, _ = body(("Projects",), "[[+Foo]]")
         self.assertIn("[[Foo]]", md)
 
+    def test_plain_name_does_not_reach_into_a_child(self):
+        # Zim resolves a plain name against the linking page's own level and
+        # upwards; reaching down to a child is what [[+child]] is for. Bar is
+        # a child of Foo, so this link has no page behind it.
+        md, stats = body(("Projects", "Foo"), "[[Bar]]")
+        self.assertTrue(stats.unresolved)
+        self.assertIn("[[Projects/Bar]]", md)
+
+    def test_plain_name_walks_up_the_tree(self):
+        md, stats = body(("Projects", "Foo", "Bar"), "[[Foo]]")
+        self.assertIn("[[Foo]]", md)
+        self.assertFalse(stats.unresolved)
+
+    def test_dead_link_keeps_its_full_path(self):
+        md, _ = body(("Projects", "Foo"), "[[Nowhere]]")
+        self.assertIn("[[Projects/Nowhere]]", md)
+
+    def test_child_link_with_plus(self):
+        md, stats = body(("Projects", "Foo"), "[[+Bar]]")
+        self.assertIn("[[Bar]]", md)
+        self.assertFalse(stats.unresolved)
+
     def test_unresolved_reported(self):
         md, stats = body(("Home",), "[[Nowhere:Missing]]")
         self.assertTrue(stats.unresolved)

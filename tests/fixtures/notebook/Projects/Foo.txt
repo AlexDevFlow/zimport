@@ -3,7 +3,7 @@ Wiki-Format: zim 0.6
 Creation-Date: 2024-03-03T14:30:00+01:00
 
 ====== Foo ======
-Part of [[:Projects]]. A sibling relative link works too: [[Bar]].
+Part of [[:Projects]]. A link down to the child page: [[+Bar]].
 
 Here is an attached diagram:
 

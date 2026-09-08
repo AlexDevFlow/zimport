@@ -71,18 +71,35 @@ about links that didn't match a page or embedded files it couldn't find.
 | `[[Page]]`, `[[a:b:c]]`, `[[+child]]`, `[[:top]]` | `[[Page]]` |
 | `[[http://...\|text]]` | `[text](http://...)` |
 
-Internal links are the fiddly part. Zim lets you write a link relative to the
-current page and resolves it by walking up the tree, so the same text can mean
-different pages depending on where it sits. zimport resolves each link the way
-Zim would, then writes the shortest Obsidian link that still points at the right
-note: just the page name where that's unique in the vault, or the full path
-where it isn't.
+Internal links are the fiddly part. Zim resolves a link written as a plain name
+against the page it sits on: it matches the first name in the link at the
+linking page's own level or above, prefers the closest match, and never reaches
+down into a child page, which is what `[[+child]]` is for. So the same link text
+can mean different pages depending on where it sits.
+
+zimport resolves each link the way Zim does, then writes the shortest Obsidian
+link that still points at the right note: just the page name where that's unique
+in the vault, or the full path where it isn't. A link with no page behind it
+keeps its full path, so it stays a dead link where Zim would have created the
+page rather than quietly attaching itself to some unrelated note of the same
+name.
+
+This is checked rather than assumed. `tools/compare_with_zim.py` asks Zim's own
+indexer and zimport to resolve every link form for every page in a notebook and
+reports any disagreement; it needs Zim installed, so it isn't part of the test
+suite.
 
 Attachments live next to the page in Zim (in a folder named after it). Those get
 copied into the vault at the matching place, and the embeds are rewritten to
 point at them, including the ones written relative to a parent page
 (`{{../shared.png}}`). Zim's own dot-folders, like the `.zim` index cache, are
 left behind.
+
+A `.txt` file counts as a page only if it carries Zim's header on the first
+line, which is the same test Zim itself makes. That matters because a text file
+attached to a page sits in the page's folder like any other attachment: it gets
+copied across as it is, rather than being run through the converter and turned
+into a note.
 
 ## What it doesn't do
 
