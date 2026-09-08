@@ -30,6 +30,7 @@ _LANG = re.compile(r'lang="([^"]+)"')
 _PROTECT = re.compile(r"\{\{.*?\}\}|\[\[.*?\]\]|''.*?''")
 _TAG = re.compile(r"(?<![\w/#])@([A-Za-z][\w\-]*)")
 _SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.\-]*://")
+_STRAY_PERCENT = re.compile(r"%(?![0-9A-Fa-f]{2})")
 
 
 @dataclass
@@ -170,9 +171,9 @@ class Converter:
         disp = disp.strip() or None
 
         if _SCHEME.match(href) or href.startswith(("mailto:", "tel:")):
-            return f"[{disp or href}]({href})"
+            return f"[{disp or href}]({_url(href)})"
         if href.startswith(("./", "../", "/", "~", "file:")):
-            return f"[{disp or href}]({href})"
+            return f"[{disp or href}]({_url(href)})"
 
         target, _, anchor = href.partition("#")
         if not target:  # link within the same page
@@ -205,7 +206,7 @@ class Converter:
             width = "|" + wm.group(1)
 
         if _SCHEME.match(path) or path.startswith(("file:", "/")):
-            return f"![{alt}]({path})"
+            return f"![{alt}]({_url(path)})"
 
         # Attachments live in the folder named after the page, so "./x.png" is
         # that folder and each "../" steps one page up.
@@ -226,6 +227,18 @@ class Converter:
         embed = "/".join(base + [fname])
         stats.attachments.add(embed)
         return f"![[{embed}{width}]]"
+
+
+def _url(target: str) -> str:
+    """Escape the characters that would end a Markdown link early.
+
+    A space closes the destination and a bracket unbalances it, so a link to
+    ``file:///home/a/my shot (1).png`` silently points nowhere. Only these
+    three are touched, which leaves any percent escapes already in the link
+    alone.
+    """
+    target = _STRAY_PERCENT.sub("%25", target)  # leave real escapes alone
+    return target.replace(" ", "%20").replace("(", "%28").replace(")", "%29")
 
 
 def _soft_indent(level: int) -> str:

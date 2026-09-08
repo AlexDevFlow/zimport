@@ -161,6 +161,20 @@ class Images(unittest.TestCase):
         self.assertIn("![[Projects/Foo/diagram.png|320]]", md)
         self.assertIn("Projects/Foo/diagram.png", stats.attachments)
 
+    def test_spaces_in_a_file_link_are_escaped(self):
+        # A space would end the Markdown destination early and the link would
+        # quietly point nowhere.
+        md, _ = body(("X",), "{{file:///p/file name.png}}")
+        self.assertIn("![](file:///p/file%20name.png)", md)
+
+    def test_brackets_in_a_path_are_escaped(self):
+        md, _ = body(("X",), "{{/p/my shot (1).png}}")
+        self.assertIn("![](/p/my%20shot%20%281%29.png)", md)
+
+    def test_existing_escapes_are_left_alone(self):
+        md, _ = body(("X",), "[[https://example.com/a%20b|x]]")
+        self.assertIn("[x](https://example.com/a%20b)", md)
+
     def test_external_image(self):
         md, _ = body(("X",), "{{https://example.com/a.png|alt}}")
         self.assertIn("![alt](https://example.com/a.png)", md)
