@@ -64,5 +64,40 @@ class EndToEnd(unittest.TestCase):
         self.assertFalse(out.exists())
 
 
+    def test_refuses_a_vault_inside_the_notebook(self):
+        r = subprocess.run(
+            [sys.executable, "-m", "zimport", str(FIXTURE), str(FIXTURE / "out")],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("inside each other", r.stderr)
+
+
+class HiddenFiles(unittest.TestCase):
+    def test_dot_directories_are_not_pages(self):
+        tmp = TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        nb = Path(tmp.name) / "notebook"
+        (nb / ".zim").mkdir(parents=True)
+        (nb / ".zim" / "index.txt").write_text("not a page\n", encoding="utf-8")
+        (nb / "notebook.zim").write_text("[Notebook]\nname=t\n", encoding="utf-8")
+        (nb / "Real.txt").write_text(
+            "Content-Type: text/x-zim-wiki\n\n====== Real ======\n", encoding="utf-8"
+        )
+        out = Path(tmp.name) / "vault"
+        r = subprocess.run(
+            [sys.executable, "-m", "zimport", str(nb), str(out)],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue((out / "Real.md").exists())
+        self.assertFalse((out / ".zim").exists())
+        self.assertIn("1 page(s)", r.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

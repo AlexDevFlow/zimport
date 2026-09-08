@@ -50,6 +50,12 @@ def run(argv: list[str] | None = None) -> int:
     if not nb_root.is_dir():
         print(f"zimport: {nb_root} is not a directory", file=sys.stderr)
         return 2
+    if _nested(nb_root, vault):
+        print(
+            "zimport: the notebook and the vault must not sit inside each other",
+            file=sys.stderr,
+        )
+        return 2
     if vault.exists() and any(vault.iterdir()) and not args.overwrite and not args.dry_run:
         print(
             f"zimport: {vault} is not empty (use --overwrite to write into it)",
@@ -84,12 +90,13 @@ def run(argv: list[str] | None = None) -> int:
             dest.write_text(md, encoding="utf-8")
         pages_written += 1
 
-    attachments = copy_attachments(nb, vault, dry_run=args.dry_run)
+    found = attachment_files(nb)
+    attachments = copy_attachments(found, vault, dry_run=args.dry_run)
 
     if not args.quiet:
         where = "would convert" if args.dry_run else "converted"
         print(f"{where} {pages_written} page(s), copied {attachments} attachment(s)")
-    missing = referenced - _existing_attachment_set(nb)
+    missing = referenced - set(found)
     if missing and not args.quiet:
         print(f"warning: {len(missing)} embedded file(s) not found in the notebook", file=sys.stderr)
         for m in sorted(missing)[:10]:
@@ -101,35 +108,39 @@ def run(argv: list[str] | None = None) -> int:
     return 0
 
 
-def copy_attachments(nb: Notebook, vault: Path, dry_run: bool) -> int:
-    """Copy every non-page file into the vault, decoding directory names."""
-    count = 0
+def attachment_files(nb: Notebook) -> dict[str, Path]:
+    """Every non-page file in the notebook, keyed by its path in the vault.
+
+    The key is what an embed in a converted page points at, so the caller can
+    both copy the files and tell which embeds have nothing behind them.
+    """
+    out: dict[str, Path] = {}
     for f in sorted(nb.root.rglob("*")):
         if f.is_dir() or f.suffix == ".txt" or f.name == "notebook.zim":
             continue
-        if any(part.startswith(".") for part in f.relative_to(nb.root).parts):
-            continue
         rel = f.relative_to(nb.root)
-        vault_parts = [decode_name(p, nb.keep_underscores) for p in rel.parts[:-1]]
-        dest = vault.joinpath(*vault_parts, rel.name)
-        if not dry_run:
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(f, dest)
-        count += 1
-    return count
-
-
-def _existing_attachment_set(nb: Notebook) -> set[str]:
-    out: set[str] = set()
-    for f in nb.root.rglob("*"):
-        if f.is_dir() or f.suffix == ".txt" or f.name == "notebook.zim":
-            continue
-        rel = f.relative_to(nb.root)
-        if any(p.startswith(".") for p in rel.parts):
+        if any(part.startswith(".") for part in rel.parts):
             continue
         dirs = [decode_name(p, nb.keep_underscores) for p in rel.parts[:-1]]
-        out.add("/".join(dirs + [rel.name]))
+        out["/".join(dirs + [rel.name])] = f
     return out
+
+
+def copy_attachments(found: dict[str, Path], vault: Path, dry_run: bool) -> int:
+    """Copy the notebook's non-page files into their place in the vault."""
+    for vault_path, src in found.items():
+        if dry_run:
+            continue
+        dest = vault.joinpath(*vault_path.split("/"))
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dest)
+    return len(found)
+
+
+def _nested(a: Path, b: Path) -> bool:
+    """True if either directory sits inside the other (or they're the same)."""
+    ra, rb = a.resolve(), b.resolve()
+    return ra == rb or ra in rb.parents or rb in ra.parents
 
 
 def main() -> None:

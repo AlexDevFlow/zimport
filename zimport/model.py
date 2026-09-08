@@ -46,6 +46,10 @@ class Notebook:
         nb = cls(root=root, keep_underscores=keep_underscores)
         for txt in sorted(root.rglob("*.txt")):
             rel = txt.relative_to(root)
+            # Zim keeps its index and per-notebook state in dot-directories;
+            # those aren't pages.
+            if any(p.startswith(".") for p in rel.parts):
+                continue
             parts = rel.with_suffix("").parts
             if not parts:
                 continue

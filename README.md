@@ -1,5 +1,7 @@
 # zimport
 
+[![tests](https://github.com/AlexDevFlow/zimport/actions/workflows/tests.yml/badge.svg)](https://github.com/AlexDevFlow/zimport/actions/workflows/tests.yml)
+
 Convert a [Zim Desktop Wiki](https://zim-wiki.org) notebook into an
 [Obsidian](https://obsidian.md) vault.
 
@@ -13,17 +15,17 @@ checkboxes and attachments carried across.
 With pipx (keeps it in its own environment):
 
 ```
-pipx install zimport-wiki
+pipx install git+https://github.com/AlexDevFlow/zimport.git
 ```
 
 Or with pip:
 
 ```
-pip install zimport-wiki
+pip install git+https://github.com/AlexDevFlow/zimport.git
 ```
 
 Or run it straight from a clone, no install needed (it only uses the standard
-library):
+library, Python 3.9 or newer):
 
 ```
 python3 -m zimport NOTEBOOK VAULT
@@ -47,6 +49,7 @@ Options:
   saved as `My_Page.txt` becomes `My Page.md`, matching how Zim shows it.
 - `--dry-run` reports what it would do without writing anything.
 - `--overwrite` writes into a non-empty vault folder.
+- `-q`, `--quiet` prints warnings only.
 
 When it finishes it prints how many pages and attachments it handled, and warns
 about links that didn't match a page or embedded files it couldn't find.
@@ -61,6 +64,7 @@ about links that didn't match a page or embedded files it couldn't find.
 | `''code''` and `'''` blocks | `` `code` `` and fenced blocks |
 | `{{{code: lang="python" ...}}}` | fenced block with the language |
 | `[ ] [*] [x] [>]` checkboxes | `- [ ] - [x] - [-] - [>]` tasks |
+| `* item` bullets, `1.` and `a)` lists | `- item`, numbered list |
 | `H_{2}O`, `x^{2}` | `H<sub>2</sub>O`, `x<sup>2</sup>` |
 | `@tag` | `#tag` |
 | `{{./image.png?width=300}}` | `![[image.png\|300]]` |
@@ -76,7 +80,9 @@ where it isn't.
 
 Attachments live next to the page in Zim (in a folder named after it). Those get
 copied into the vault at the matching place, and the embeds are rewritten to
-point at them.
+point at them, including the ones written relative to a parent page
+(`{{../shared.png}}`). Zim's own dot-folders, like the `.zim` index cache, are
+left behind.
 
 ## What it doesn't do
 
@@ -88,6 +94,12 @@ point at them.
   Obsidian treats them as done.
 - A bare `@word` in running text becomes a `#tag`. If you have those and don't
   want them as tags, check the result.
+- Zim indents with tabs, and Markdown reads four leading spaces as a code block.
+  Indented lines under a list item keep their indent, since that's a list
+  continuation; an indented paragraph on its own gets a shallower indent instead,
+  so it still reads as a paragraph rather than turning into code.
+- Lettered lists (`a)`, `b)`) become an ordinary numbered list; Markdown has no
+  letter counter.
 
 ## Tests
 
@@ -96,7 +108,7 @@ python3 -m unittest discover -s tests
 ```
 
 The tests run a sample notebook through the converter and check the markup, the
-link resolution and the attachment copying.
+link resolution and the attachment copying. They only need the standard library.
 
 ## License
 

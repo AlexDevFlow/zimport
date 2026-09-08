@@ -144,5 +144,56 @@ class Images(unittest.TestCase):
         self.assertIn("![alt](https://example.com/a.png)", md)
 
 
+class Indentation(unittest.TestCase):
+    def test_indented_paragraph_is_not_a_code_block(self):
+        md, _ = body(("X",), "intro\n\tindented note")
+        self.assertNotIn("    indented note", md)
+        self.assertIn("indented note", md)
+
+    def test_indented_line_under_a_bullet_stays_with_it(self):
+        md, _ = body(("X",), "* item\n\tcontinued here")
+        self.assertIn("    continued here", md)
+
+    def test_heading_closes_the_list(self):
+        md, _ = body(("X",), "* item\n====== H ======\n\tafter")
+        self.assertNotIn("    after", md)
+
+    def test_whitespace_only_line_is_emptied(self):
+        md, _ = body(("X",), "text\n\t\nmore")
+        self.assertIn("text\n\nmore", md)
+
+
+class ParentEmbeds(unittest.TestCase):
+    def test_parent_relative_embed(self):
+        md, stats = body(("Projects", "Foo", "Bar"), "{{../diagram.png}}")
+        self.assertIn("![[Projects/Foo/diagram.png]]", md)
+        self.assertIn("Projects/Foo/diagram.png", stats.attachments)
+
+    def test_walking_past_the_root_stops_there(self):
+        md, _ = body(("Home",), "{{../../stray.png}}")
+        self.assertIn("![[stray.png]]", md)
+
+
+class Frontmatter(unittest.TestCase):
+    def test_created_and_tags(self):
+        md, _ = body(("X",), "a @todo item", frontmatter=True)
+        self.assertTrue(md.startswith("---\n"))
+        self.assertIn("created: 2024-01-01T00:00:00+00:00", md)
+        self.assertIn("  - todo", md)
+
+    def test_nothing_to_say_means_no_block(self):
+        src = "Content-Type: text/x-zim-wiki\n\nplain body\n"
+        md, _ = convert(("X",), src, frontmatter=True)
+        self.assertFalse(md.startswith("---"))
+
+    def test_awkward_date_is_quoted(self):
+        src = (
+            "Content-Type: text/x-zim-wiki\n"
+            "Creation-Date: @2024 # odd\n\nbody\n"
+        )
+        md, _ = convert(("X",), src, frontmatter=True)
+        self.assertIn("created: '@2024 # odd'", md)
+
+
 if __name__ == "__main__":
     unittest.main()

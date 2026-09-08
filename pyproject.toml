@@ -9,18 +9,28 @@ description = "Convert a Zim Desktop Wiki notebook into an Obsidian vault"
 readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "AlexDevFlow" }]
 keywords = ["zim", "obsidian", "wiki", "markdown", "converter", "notes"]
 classifiers = [
+    "Development Status :: 4 - Beta",
     "Environment :: Console",
     "Intended Audience :: End Users/Desktop",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Text Processing :: Markup",
+    "Topic :: Utilities",
 ]
 
 [project.urls]
 Homepage = "https://github.com/AlexDevFlow/zimport"
 Repository = "https://github.com/AlexDevFlow/zimport"
+Issues = "https://github.com/AlexDevFlow/zimport/issues"
 
 [project.scripts]
 zimport = "zimport.cli:main"

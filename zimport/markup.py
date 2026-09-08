@@ -53,6 +53,7 @@ class Converter:
         out: list[str] = []
         in_code = False
         code_obj = False
+        in_list = False
         for raw in body.split("\n"):
             if code_obj:
                 if raw.strip() == "}}}":
@@ -78,43 +79,57 @@ class Converter:
                 out.append("```" + (lang.group(1) if lang else ""))
                 code_obj = True
                 continue
-            out.append(self._line(parts, raw, stats))
+            line, in_list = self._line(parts, raw, stats, in_list)
+            out.append(line)
 
         md = "\n".join(out)
-        if self.frontmatter:
+        if self.frontmatter and (stats.creation_date or stats.tags):
             md = _frontmatter(stats) + md
         return md, stats
 
     # -- block level -------------------------------------------------------
 
-    def _line(self, parts: tuple[str, ...], line: str, stats: PageStats) -> str:
+    def _line(
+        self, parts: tuple[str, ...], line: str, stats: PageStats, in_list: bool
+    ) -> tuple[str, bool]:
+        """Convert one body line. Returns the line and whether a list is open.
+
+        ``in_list`` matters for indentation: four spaces continue a list item,
+        but in front of an ordinary paragraph they would make Obsidian render
+        it as a code block.
+        """
         indent = 0
         while indent < len(line) and line[indent] == "\t":
             indent += 1
         stripped = line[indent:]
         pad = "    " * indent
 
+        if not stripped.strip():
+            return "", in_list
+
         h = _HEADING.match(stripped)
         if h:
             level = max(1, min(6, 7 - len(h.group(1))))
             title = self._inline(parts, h.group(2).strip(), stats)
-            return pad + "#" * level + " " + title
+            return pad + "#" * level + " " + title, False
         if _HR.match(stripped):
-            return pad + "---"
+            return pad + "---", False
 
         c = _CHECKBOX.match(stripped)
         if c:
             box = _BOX.get(c.group(1), " ")
-            return f"{pad}- [{box}] " + self._inline(parts, c.group(2), stats)
+            return f"{pad}- [{box}] " + self._inline(parts, c.group(2), stats), True
         b = _BULLET.match(stripped)
         if b:
-            return f"{pad}- " + self._inline(parts, b.group(2), stats)
+            return f"{pad}- " + self._inline(parts, b.group(2), stats), True
         n = _NUMBERED.match(stripped)
         if n:
             num = n.group(1) if n.group(1).isdigit() else "1"
-            return f"{pad}{num}. " + self._inline(parts, n.group(2), stats)
+            return f"{pad}{num}. " + self._inline(parts, n.group(2), stats), True
 
-        return pad + self._inline(parts, stripped, stats)
+        if indent and not in_list:
+            pad = _soft_indent(indent)
+        return pad + self._inline(parts, stripped, stats), in_list
 
     # -- inline ------------------------------------------------------------
 
@@ -187,13 +202,31 @@ class Converter:
         if _SCHEME.match(path) or path.startswith(("file:", "/")):
             return f"![{alt}]({path})"
 
+        # Attachments live in the folder named after the page, so "./x.png" is
+        # that folder and each "../" steps one page up.
         fname = path
-        for pre in ("./", "../"):
-            while fname.startswith(pre):
-                fname = fname[len(pre):]
-        embed = "/".join(list(self.nb.vault_parts(parts)) + [fname])
+        up = 0
+        while True:
+            if fname.startswith("../"):
+                fname = fname[3:]
+                up += 1
+            elif fname.startswith("./"):
+                fname = fname[2:]
+            else:
+                break
+        base = list(self.nb.vault_parts(parts))
+        while up and base:
+            base.pop()
+            up -= 1
+        embed = "/".join(base + [fname])
         stats.attachments.add(embed)
         return f"![[{embed}{width}]]"
+
+
+def _soft_indent(level: int) -> str:
+    """Indent for a paragraph outside a list: visible, but under the four
+    spaces that would turn it into a code block."""
+    return " " * min(3, 2 * level)
 
 
 def _strip_header(text: str) -> tuple[str, str | None]:
@@ -214,7 +247,7 @@ def _strip_header(text: str) -> tuple[str, str | None]:
 def _frontmatter(stats: PageStats) -> str:
     rows = ["---"]
     if stats.creation_date:
-        rows.append(f"created: {stats.creation_date}")
+        rows.append(f"created: {_yaml_scalar(stats.creation_date)}")
     if stats.tags:
         rows.append("tags:")
         for t in sorted(stats.tags):
@@ -223,3 +256,12 @@ def _frontmatter(stats: PageStats) -> str:
     rows.append("")
     rows.append("")
     return "\n".join(rows)
+
+
+def _yaml_scalar(value: str) -> str:
+    """Quote a frontmatter value if it would otherwise confuse a YAML parser."""
+    if not value:
+        return '""'
+    if value[0] in "-?:,[]{}#&*!|>'\"%@`" or ": " in value or " #" in value:
+        return "'" + value.replace("'", "''") + "'"
+    return value
